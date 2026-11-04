@@ -98,12 +98,26 @@ down to the phone's sample rate, and plots the last 5 seconds:
    tilting. The filter uses each sample's real time step, so uneven timing is handled
    without resampling.
 2. **Moving RMS envelope** over 100 ms of the filtered magnitude.
-3. **Threshold detection.** A bump is counted when the envelope crosses the threshold
-   (adjustable with the slider, default 2 m/s²). The detector re-arms once the envelope
-   drops below half the threshold, and needs at least 300 ms between bumps. The first
-   1 s after Start is ignored while the filter settles.
+3. **Threshold.** There are two modes, and the choice is remembered:
+   - **Auto (default):** `threshold = max(median(bg) + 6 × MAD(bg), minimum)`, the rule in
+     the VibraSmash proposal and `src/detect/vs_adaptive_threshold.m`. MAD is the
+     unscaled median absolute deviation. The background `bg` is the envelope over the
+     last 5 s, leaving out samples during a bump and its tail, so an impact can't raise
+     its own threshold. The threshold for each sample comes from the background *before*
+     it. The slider sets the minimum (default 0.5 m/s², a demo value that wasn't
+     measured), which plays the role of the pipeline's noise floor: a phone lying still
+     has a tiny MAD, and without a floor it would count almost anything. The threshold
+     starts once there is 1 s of background, about 2 s after Start. The screen shows
+     the live median, MAD and result.
+   - **Manual:** a fixed threshold set with the slider (default 2 m/s²).
+4. **Detection.** A bump is counted when the envelope crosses the threshold. The
+   detector re-arms once the envelope drops below half the threshold it crossed, and
+   needs at least 300 ms between bumps. The first 1 s after Start is ignored while the
+   filter settles.
 
 The demo settings and detected bump times are added to `_meta.txt` as `demo_*` keys.
+In auto mode these include the threshold each bump crossed and whether the statistic
+or the minimum set it (`demo_bump_threshold_mps2`, `demo_bump_threshold_limited_by`).
 The CSV holds only the raw samples.
 
 **What this demo is and isn't.** VibraSmash runs these steps on a 20 kHz piezo signal
@@ -116,8 +130,10 @@ professor.
 
 **Demo script:** hold the phone still → the envelope sits near zero. Tilt it slowly →
 still no bump, because the high-pass filter removes it. Tap the phone or knock the table
-it's on → the envelope spikes, crosses the threshold and the count goes up. Raise the
-threshold → weaker taps are no longer counted.
+it's on → the envelope spikes, crosses the threshold and the count goes up. Now shake or
+walk with the phone for a few seconds → in auto mode the threshold line rises with the
+background, so ongoing motion stops counting as bumps. Switch to manual with a low
+threshold to compare: the same motion then counts as many bumps.
 
 ## What the data is
 

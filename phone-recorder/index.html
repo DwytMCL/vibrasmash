@@ -9,108 +9,186 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-  :root { color-scheme: light dark; --accent: #1f6feb; --stop: #c62828; }
+  :root {
+    color-scheme: light;
+    --bg: #f4f6fa; --card: #ffffff; --text: #141a26; --muted: #5d6677; --line: #e1e5ec;
+    --accent: #1f6feb; --accent-ink: #ffffff; --stop: #c62828; --warn: #b26a00;
+    --soft: #eef2f8; --shadow: 0 1px 2px rgba(20, 26, 38, .06), 0 4px 14px rgba(20, 26, 38, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #9aa5b4; --line: #2a313c;
+      --accent: #4c8dff; --accent-ink: #ffffff; --stop: #ef5350; --warn: #f0a33a;
+      --soft: #1d2430; --shadow: none;
+    }
+  }
   * { box-sizing: border-box; }
+  html { background: var(--bg); }
   body {
-    margin: 0; padding: 20px max(16px, env(safe-area-inset-left));
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: Canvas; color: CanvasText;
-    display: flex; flex-direction: column; gap: 16px; max-width: 520px; margin-inline: auto;
+    margin: 0 auto; max-width: 560px; min-height: 100vh;
+    padding: max(14px, env(safe-area-inset-top)) 16px 0;
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; gap: 14px;
   }
-  h1 { font-size: 1.25rem; margin: 0; }
-  .note { font-size: 0.85rem; opacity: 0.75; margin: 0; }
-  label { font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
-  input {
-    font-size: 1.1rem; padding: 12px; border-radius: 10px;
-    border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
-    background: Canvas; color: CanvasText;
+  button, input { font: inherit; color: inherit; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  h1 { font-size: 1.15rem; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-size: 0.72rem; font-weight: 600; white-space: nowrap; padding: 4px 9px; border-radius: 999px;
+    background: var(--soft); color: var(--muted); border: 1px solid var(--line);
   }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  h2 { font-size: 0.95rem; margin: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.8rem; }
+
+  canvas { display: block; width: 100%; height: 200px; border-radius: 10px; background: var(--soft); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.75rem; color: var(--muted); }
+  .sw { display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .sw.hp { background: #8a94a6; } .sw.env { background: #1f6feb; height: 4px; }
+  .sw.thr { background: repeating-linear-gradient(90deg, #e08a00 0 4px, transparent 4px 7px); }
+  .sw.bump { background: #c62828; width: 4px; height: 11px; }
+
+  .readouts { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 8px; }
+  .readout { background: var(--soft); border-radius: 12px; padding: 10px; min-width: 0; }
+  .readout b { display: block; font-size: 1.35rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .readout.big b { font-size: 1.9rem; color: var(--accent); }
+  .readout .sub { font-variant-numeric: tabular-nums; }
+  .readout span span { display: inline; }
+  .readout span { display: block; font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 11px; padding: 3px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    text-align: center; padding: 9px 6px; border-radius: 9px; font-size: 0.88rem; font-weight: 600;
+    color: var(--muted); cursor: pointer; touch-action: manipulation;
+  }
+  .seg input:checked + label { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); }
+  .seg input:disabled + label { opacity: 0.5; }
+  .slider-row { display: flex; flex-direction: column; gap: 4px; }
+  .slider-row .row { display: flex; justify-content: space-between; font-size: 0.85rem; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 4px 0; }
+  .formula {
+    margin: 0; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums;
+    min-height: 2.6em; white-space: pre-line; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  details.card { gap: 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; list-style: none; display: flex; justify-content: space-between; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; color: var(--muted); font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  details[open] summary { margin-bottom: 10px; }
+  .steps { margin: 0 0 10px; padding-left: 1.2em; font-size: 0.88rem; display: flex; flex-direction: column; gap: 6px; }
+  .note { font-size: 0.8rem; color: var(--muted); margin: 0 0 8px; }
+
+  .dock {
+    position: sticky; bottom: 0; margin: auto -16px 0; padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    background: var(--card); border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .session { display: flex; align-items: center; gap: 10px; }
+  .session input {
+    flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; font-size: 0.95rem;
+    border: 1px solid var(--line); background: var(--bg);
+  }
+  .session input:disabled { opacity: 0.6; }
+  .rec-info { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   #toggle {
-    font-size: 1.8rem; font-weight: 700; padding: 36px 0; border: 0; border-radius: 18px;
-    color: #fff; background: var(--accent); width: 100%;
-    touch-action: manipulation;
+    font-size: 1.15rem; font-weight: 700; padding: 15px 0; border: 0; border-radius: 14px;
+    color: var(--accent-ink); background: var(--accent); touch-action: manipulation;
   }
   #toggle.recording { background: var(--stop); }
-  #share {
-    font-size: 1.15rem; font-weight: 600; padding: 16px 0; border-radius: 14px; width: 100%;
-    border: 2px solid var(--accent); color: var(--accent); background: transparent;
-    touch-action: manipulation;
-  }
-  #share:disabled { opacity: 0.4; }
   #toggle:disabled { opacity: 0.5; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .stat {
-    border-radius: 12px; padding: 12px 8px; text-align: center;
-    background: color-mix(in srgb, CanvasText 7%, transparent);
+  #share {
+    font-weight: 600; padding: 0 18px; border-radius: 14px; border: 1.5px solid var(--accent);
+    color: var(--accent); background: transparent; touch-action: manipulation;
   }
-  .stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 0.75rem; opacity: 0.75; }
-  #status { min-height: 1.4em; font-size: 0.95rem; margin: 0; }
+  #share:disabled { opacity: 0.35; }
+  #status { margin: 0; font-size: 0.85rem; min-height: 1.3em; }
+  #status:empty { display: none; }
   #status.error { color: var(--stop); font-weight: 600; }
-  h2 { font-size: 1.05rem; margin: 0; }
-  .demo { display: flex; flex-direction: column; gap: 12px; }
-  canvas { width: 100%; height: 220px; border-radius: 12px;
-    background: color-mix(in srgb, CanvasText 5%, transparent); }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; }
-  .sw { display: inline-block; width: 14px; height: 4px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
-  .sw.hp { background: #8a94a6; } .sw.env { background: #1f6feb; height: 5px; }
-  .sw.thr { background: repeating-linear-gradient(90deg, #e08a00 0 4px, transparent 4px 7px); }
-  .sw.bump { background: #c62828; width: 4px; height: 12px; }
-  input[type=range] { padding: 0; }
-  .steps { margin: 0; padding-left: 1.3em; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--stop); margin-right: 6px; vertical-align: 1px; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
 </style>
 </head>
 <body>
-<h1>VibraSmash Phone Recorder</h1>
-<p class="note">Phone accelerometer only. This is not ESP32 piezo or IMU data.</p>
+<header>
+  <h1>VibraSmash Recorder</h1>
+  <span class="tag" title="Phone accelerometer only. This is not ESP32 piezo or IMU data.">Phone · not ESP32</span>
+</header>
 
-<label>Session name
-  <input id="session" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
-         placeholder="e.g. 2026-11-05_phone_01">
-</label>
-
-<button id="toggle" type="button">Start</button>
-<button id="share" type="button" disabled>Share last recording</button>
-
-<div class="stats">
-  <div class="stat"><b id="count">0</b><span>samples</span></div>
-  <div class="stat"><b id="elapsed">0.0 s</b><span>elapsed</span></div>
-  <div class="stat"><b id="rate">–</b><span>rate (Hz)</span></div>
-</div>
-
-<p id="status" role="status"></p>
-
-<section class="demo">
-  <h2>Live DSP demo</h2>
-  <canvas id="plot" height="220" aria-label="Live plot of filtered signal, envelope and threshold"></canvas>
+<section class="card" aria-label="Live signal">
+  <div class="card-title">
+    <h2>Live signal</h2>
+    <span class="muted small">last 5 s</span>
+  </div>
+  <canvas id="plot" height="200" aria-label="Live plot of filtered signal, envelope and threshold"></canvas>
   <div class="legend">
     <span><i class="sw hp"></i>high-passed |a|</span>
     <span><i class="sw env"></i>RMS envelope</span>
     <span><i class="sw thr"></i>threshold</span>
-    <span><i class="sw bump"></i>detected bump</span>
+    <span><i class="sw bump"></i>bump</span>
   </div>
-  <div class="stats">
-    <div class="stat"><b id="bumps">0</b><span>bumps detected</span></div>
-    <div class="stat"><b id="envNow">–</b><span>envelope (m/s²)</span></div>
-    <div class="stat"><b id="lastPeak">–</b><span>last peak (m/s²)</span></div>
+  <div class="readouts">
+    <div class="readout big"><b id="bumps">0</b><span>bumps</span><span class="sub">peak <span id="lastPeak">–</span></span></div>
+    <div class="readout"><b id="envNow">–</b><span>envelope m/s²</span></div>
+    <div class="readout"><b id="thrNow">–</b><span>threshold m/s²</span></div>
   </div>
-  <label>Detection threshold: <b id="thrVal"></b> m/s²
-    <input id="thr" type="range" min="0.3" max="10" step="0.1">
-  </label>
+</section>
+
+<section class="card" aria-label="Detection threshold">
+  <div class="seg" role="radiogroup" aria-label="Threshold mode">
+    <input type="radio" name="thrMode" id="modeAuto" value="auto"><label for="modeAuto">Auto · median + 6×MAD</label>
+    <input type="radio" name="thrMode" id="modeManual" value="manual"><label for="modeManual">Manual</label>
+  </div>
+  <div class="slider-row">
+    <div class="row"><label for="thr" id="thrLabel">Detection threshold</label><b><span id="thrVal"></span> m/s²</b></div>
+    <input id="thr" type="range" min="0.1" max="10" step="0.1">
+  </div>
+  <p id="thrFormula" class="formula"></p>
+</section>
+
+<details class="card">
+  <summary>How it works</summary>
   <ol class="steps">
     <li><b>High-pass filter</b> (first order, <span id="hpHz"></span> Hz) on each axis removes gravity and slow tilting.</li>
     <li><b>Moving RMS envelope</b> over <span id="rmsMs"></span> ms of the filtered magnitude.</li>
-    <li><b>Threshold crossing</b> marks a bump; it re-arms when the envelope falls below half the
+    <li><b>Auto threshold</b> (as in the VibraSmash proposal): median of the background envelope
+        plus 6 × its median absolute deviation, never below the minimum. The background is the
+        last 5 s of envelope with bumps left out, so an impact can't raise its own threshold.</li>
+    <li><b>Threshold crossing</b> marks a bump. It re-arms when the envelope falls below half the
         threshold, with a <span id="refMs"></span> ms refractory period.</li>
   </ol>
-  <p class="note">This shows the same steps as the VibraSmash pipeline, scaled down to the phone's
+  <p class="note">These are the same steps as the VibraSmash pipeline, scaled down to the phone's
   sample rate. VibraSmash runs them on a 20 kHz piezo signal (80 Hz–2 kHz band, 5 ms RMS window).
-  The phone accelerometer delivers only about 50–100 Hz, so this is a demonstration of the
-  concept, not a measurement of racket impacts. The demo settings were not tuned on data.</p>
-</section>
+  The phone accelerometer delivers only about 50–100 Hz, so this demonstrates the concept. It is not
+  a measurement of racket impacts, and the demo settings were not tuned on data.</p>
+  <p class="note">Keep the screen on and the app in front while recording, because motion events
+  pause when it is hidden.</p>
+</details>
 
-<p class="note">Keep the screen on and this page in front while recording. Browsers pause
-motion events when the page is hidden.</p>
+<div class="dock">
+  <p id="status" role="status"></p>
+  <div class="session">
+    <input id="session" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+           aria-label="Session name" placeholder="Session name, e.g. 2026-11-05_phone_01">
+    <span class="rec-info"><span id="recDot"></span><span id="count">0</span> · <span id="elapsed">0.0 s</span> · <span id="rate">–</span> Hz</span>
+  </div>
+  <div class="actions">
+    <button id="toggle" type="button">Start</button>
+    <button id="share" type="button" disabled aria-label="Share last recording">Share</button>
+  </div>
+</div>
 
 <script>
 // ===== BEGIN CORE (pure functions; tested by test/core.test.js) =====
@@ -226,26 +304,58 @@ var Core = (function () {
   // live demonstration. They are NOT the pipeline's settings (80 Hz-2 kHz band,
   // 5 ms RMS window on a 20 kHz piezo signal) and nothing here was tuned on data.
   var DSP_DEFAULTS = {
-    hp_cutoff_hz: 1.0,      // first-order high-pass: removes gravity and slow tilting
-    rms_window_s: 0.10,     // moving RMS envelope length
-    threshold_mps2: 2.0,    // detection threshold on the envelope (adjustable in the UI)
-    rearm_ratio: 0.5,       // envelope must fall below ratio x threshold before the next detection
-    refractory_s: 0.30,     // minimum time between detections
-    warmup_s: 1.0           // no detections while the filter settles after Start
+    hp_cutoff_hz: 1.0,       // first-order high-pass: removes gravity and slow tilting
+    rms_window_s: 0.10,      // moving RMS envelope length
+    threshold_mode: 'auto',  // 'auto' = max(median + k*MAD of background, minimum); 'manual' = fixed
+    threshold_mps2: 2.0,     // manual mode: the threshold
+    min_threshold_mps2: 0.5, // auto mode: lower limit (the pipeline's noise floor); not measured
+    mad_k: 6,                // auto mode: median + 6 x MAD (as the proposal and pipeline)
+    bg_window_s: 5.0,        // auto mode: background = envelope over the last 5 s, bumps excluded
+    min_bg_s: 1.0,           // auto mode: background needed before the threshold exists
+    rearm_ratio: 0.5,        // envelope must fall below ratio x threshold before the next detection
+    refractory_s: 0.30,      // minimum time between detections
+    warmup_s: 1.0            // no background or detections while the filter settles after Start
   };
+
+  // Median and unscaled median absolute deviation, as vs_adaptive_threshold.m.
+  function medianMad(values) {
+    var v = values.slice().sort(function (p, q) { return p - q; });
+    var med = median(v);
+    var dev = v.map(function (x) { return Math.abs(x - med); }).sort(function (p, q) { return p - q; });
+    return { median: med, mad: median(dev) };
+  }
 
   // Streaming processor. push() takes one real sample with its own timestamp;
   // the filter uses each actual interval dt, so irregular timing is handled
-  // without resampling. Returns {hp, env, bump} where bump is null or
-  // {t_us, peak_env} once the bump's envelope has fallen back (peak known).
+  // without resampling. Returns {hp, env, thr, thr_info, bump, in_bump}: bump is
+  // null, or {t_us, peak_env, thr, limited_by} once the bump's envelope has fallen
+  // back (peak known). thr is NaN while auto mode has too little background.
   function createProcessor(opts) {
     var o = {};
     for (var k in DSP_DEFAULTS) o[k] = (opts && opts[k] != null) ? opts[k] : DSP_DEFAULTS[k];
     var rc = 1 / (2 * Math.PI * o.hp_cutoff_hz);
     var prev = null, hp = [0, 0, 0], t0 = null;
     var win = [], winSum = 0, winStart = 0;
+    var bg = [], bgStart = 0;
     var armed = true, active = null, lastBumpUs = -Infinity;
     var bumps = [];
+
+    function threshold() {
+      if (o.threshold_mode !== 'auto') {
+        return { thr: o.threshold_mps2, limited_by: 'manual' };
+      }
+      var n = bg.length - bgStart;
+      if (n < 3 || (bg[bg.length - 1].t_us - bg[bgStart].t_us) / 1e6 < o.min_bg_s) {
+        return { thr: NaN, limited_by: 'no_background', n_background: n };
+      }
+      var vals = [];
+      for (var i = bgStart; i < bg.length; i++) vals.push(bg[i].v);
+      var mm = medianMad(vals);
+      var stat = mm.median + o.mad_k * mm.mad;
+      return stat >= o.min_threshold_mps2
+        ? { thr: stat, limited_by: 'statistical', median: mm.median, mad: mm.mad, n_background: n }
+        : { thr: o.min_threshold_mps2, limited_by: 'minimum', median: mm.median, mad: mm.mad, n_background: n };
+    }
 
     function push(t_us, ax, ay, az) {
       var x = [ax, ay, az];
@@ -267,44 +377,68 @@ var Core = (function () {
       if (winStart > 1024) { win = win.slice(winStart); winStart = 0; }
       var env = Math.sqrt(Math.max(winSum, 0) / (win.length - winStart));
 
+      // threshold from the background BEFORE this sample, so a rising edge
+      // never raises its own threshold
+      while (bgStart < bg.length && bg[bgStart].t_us < t_us - o.bg_window_s * 1e6) bgStart++;
+      if (bgStart > 2048) { bg = bg.slice(bgStart); bgStart = 0; }
+      var ti = threshold(), thr = ti.thr;
+
       // threshold crossing with re-arm hysteresis and refractory period
       var bump = null, settled = (t_us - t0) / 1e6 >= o.warmup_s;
       if (active) {
         if (env > active.peak_env) active.peak_env = env;
-        if (env < o.rearm_ratio * o.threshold_mps2) { bump = active; bumps.push(active); active = null; armed = true; }
+        if (env < o.rearm_ratio * active.thr) { bump = active; bumps.push(active); active = null; armed = true; }
       } else if (!armed) {
-        if (env < o.rearm_ratio * o.threshold_mps2) armed = true;
-      } else if (settled && env >= o.threshold_mps2 && (t_us - lastBumpUs) / 1e6 >= o.refractory_s) {
-        active = { t_us: t_us, peak_env: env }; armed = false; lastBumpUs = t_us;
+        if (env < o.rearm_ratio * lastThr) armed = true;
+      } else if (settled && isFinite(thr) && env >= thr && (t_us - lastBumpUs) / 1e6 >= o.refractory_s) {
+        active = { t_us: t_us, peak_env: env, thr: thr, limited_by: ti.limited_by };
+        armed = false; lastBumpUs = t_us; lastThr = thr;
       }
-      return { hp: Math.sqrt(mag2), env: env, bump: bump, in_bump: !!active };
+      // background: settled samples outside bumps and their tails
+      if (settled && armed && !active) bg.push({ t_us: t_us, v: env });
+      return { hp: Math.sqrt(mag2), env: env, thr: thr, thr_info: ti, bump: bump, in_bump: !!active };
     }
+    var lastThr = NaN;
     function finish() {          // close a bump still open at Stop
       if (active) { bumps.push(active); active = null; }
       return bumps.slice();
     }
-    function setThreshold(v) { o.threshold_mps2 = v; }
-    return { push: push, finish: finish, setThreshold: setThreshold, settings: o };
+    return { push: push, finish: finish, settings: o };
   }
 
   function buildDemoMeta(settings, bumps) {
-    return [
+    var auto = settings.threshold_mode === 'auto';
+    var lines = [
       'demo_note=live DSP concept demo at phone rate; not the VibraSmash pipeline settings',
       'demo_hp_cutoff_hz=' + settings.hp_cutoff_hz,
       'demo_rms_window_s=' + settings.rms_window_s,
-      'demo_threshold_mps2=' + settings.threshold_mps2,
+      'demo_threshold_mode=' + (auto ? 'auto_median_plus_k_mad' : 'manual')
+    ];
+    if (auto) {
+      lines.push(
+        'demo_threshold_rule=max(median(bg) + k*MAD(bg), min_threshold); MAD unscaled; bg = envelope over last bg_window_s, bumps excluded',
+        'demo_mad_k=' + settings.mad_k,
+        'demo_bg_window_s=' + settings.bg_window_s,
+        'demo_min_bg_s=' + settings.min_bg_s,
+        'demo_min_threshold_mps2=' + settings.min_threshold_mps2);
+    } else {
+      lines.push('demo_threshold_mps2=' + settings.threshold_mps2);
+    }
+    lines.push(
       'demo_rearm_ratio=' + settings.rearm_ratio,
       'demo_refractory_s=' + settings.refractory_s,
       'demo_warmup_s=' + settings.warmup_s,
       'demo_n_bumps=' + bumps.length,
       'demo_bump_t_s=' + bumps.map(function (b) { return (b.t_us / 1e6).toFixed(3); }).join(' '),
-      'demo_bump_peak_env_mps2=' + bumps.map(function (b) { return b.peak_env.toFixed(3); }).join(' ')
-    ].join('\n') + '\n';
+      'demo_bump_peak_env_mps2=' + bumps.map(function (b) { return b.peak_env.toFixed(3); }).join(' '),
+      'demo_bump_threshold_mps2=' + bumps.map(function (b) { return b.thr.toFixed(3); }).join(' '),
+      'demo_bump_threshold_limited_by=' + bumps.map(function (b) { return b.limited_by; }).join(' '));
+    return lines.join('\n') + '\n';
   }
 
   return { pickAccel: pickAccel, eventTimeMs: eventTimeMs, toUs: toUs, stats: stats,
            buildCsv: buildCsv, buildMeta: buildMeta, sanitizeSession: sanitizeSession,
-           DSP_DEFAULTS: DSP_DEFAULTS, createProcessor: createProcessor, buildDemoMeta: buildDemoMeta };
+           DSP_DEFAULTS: DSP_DEFAULTS, medianMad: medianMad, createProcessor: createProcessor, buildDemoMeta: buildDemoMeta };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
 // ===== END CORE =====
@@ -318,16 +452,55 @@ if (typeof module !== 'undefined') module.exports = Core;
   var wasHidden = false;
   var proc = null, plotPts = [], plotBumps = [], nBumps = 0, lastEnv = NaN, lastPeak = NaN, raf = 0;
   var PLOT_S = 5;
-  var thr = $('thr');
-  var savedThr = parseFloat(localStorage.getItem('vs_threshold'));
-  thr.value = isFinite(savedThr) ? savedThr : Core.DSP_DEFAULTS.threshold_mps2;
-  $('thrVal').textContent = Number(thr.value).toFixed(1);
-  $('hpHz').textContent = Core.DSP_DEFAULTS.hp_cutoff_hz;
-  $('rmsMs').textContent = Math.round(Core.DSP_DEFAULTS.rms_window_s * 1000);
-  $('refMs').textContent = Math.round(Core.DSP_DEFAULTS.refractory_s * 1000);
-  thr.addEventListener('input', function () {
+  var thr = $('thr'), lastThrInfo = null;
+  var D = Core.DSP_DEFAULTS;
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* not available */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  // The slider is the fixed threshold in manual mode and the minimum threshold in auto mode;
+  // each mode remembers its own value.
+  var sliderVal = {
+    manual: parseFloat(load('vs_threshold')) || D.threshold_mps2,
+    auto: parseFloat(load('vs_min_threshold')) || D.min_threshold_mps2
+  };
+  var mode = load('vs_threshold_mode') === 'manual' ? 'manual' : 'auto';
+  var modeInputs = document.querySelectorAll('input[name=thrMode]');
+  function applyMode() {
+    for (var i = 0; i < modeInputs.length; i++) modeInputs[i].checked = modeInputs[i].value === mode;
+    thr.value = sliderVal[mode];
+    $('thrLabel').textContent = mode === 'auto' ? 'Minimum threshold' : 'Detection threshold';
     $('thrVal').textContent = Number(thr.value).toFixed(1);
-    localStorage.setItem('vs_threshold', thr.value);
+    showFormula();
+    $('thrNow').textContent = mode === 'manual' ? Number(thr.value).toFixed(2) : '–';
+    draw();
+  }
+  function showFormula() {
+    var el = $('thrFormula'), ti = lastThrInfo;
+    if (mode === 'manual') { el.textContent = 'Fixed threshold, set with the slider.'; return; }
+    if (!ti || ti.limited_by === 'manual') {
+      el.textContent = 'threshold = max(median + 6×MAD, minimum)\nover the last 5 s of background; starts after ~2 s';
+    } else if (ti.limited_by === 'no_background') {
+      el.textContent = 'Collecting background… hold the phone still for a moment.';
+    } else {
+      var stat = ti.median + 6 * ti.mad;
+      el.textContent = ti.limited_by === 'minimum'
+        ? 'median + 6×MAD = ' + ti.median.toFixed(2) + ' + 6×' + ti.mad.toFixed(2) + ' = ' + stat.toFixed(2) +
+          '\nbelow the minimum, so threshold = ' + ti.thr.toFixed(2) + ' m/s²'
+        : 'median + 6×MAD = ' + ti.median.toFixed(2) + ' + 6×' + ti.mad.toFixed(2) + '\n= ' + ti.thr.toFixed(2) + ' m/s²';
+    }
+  }
+  for (var mi = 0; mi < modeInputs.length; mi++) {
+    modeInputs[mi].addEventListener('change', function (e) {
+      mode = e.target.value; store('vs_threshold_mode', mode); lastThrInfo = null; applyMode();
+    });
+  }
+  $('hpHz').textContent = D.hp_cutoff_hz;
+  $('rmsMs').textContent = Math.round(D.rms_window_s * 1000);
+  $('refMs').textContent = Math.round(D.refractory_s * 1000);
+  thr.addEventListener('input', function () {
+    sliderVal[mode] = Number(thr.value);
+    $('thrVal').textContent = Number(thr.value).toFixed(1);
+    if (mode === 'manual' && !recording) $('thrNow').textContent = Number(thr.value).toFixed(2);
+    store(mode === 'auto' ? 'vs_min_threshold' : 'vs_threshold', thr.value);
     draw();
   });
 
@@ -338,11 +511,14 @@ if (typeof module !== 'undefined') module.exports = Core;
     var g = cv.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
-    var threshold = Number(thr.value);
+    var threshold = Number(thr.value);   // manual threshold, or the minimum in auto mode
     var tEnd = plotPts.length ? plotPts[plotPts.length - 1].t_us : 0;
     var tStart = tEnd - PLOT_S * 1e6;
     var ymax = threshold * 1.5;
-    for (var i = 0; i < plotPts.length; i++) ymax = Math.max(ymax, plotPts[i].hp);
+    for (var i = 0; i < plotPts.length; i++) {
+      ymax = Math.max(ymax, plotPts[i].hp);
+      if (isFinite(plotPts[i].thr)) ymax = Math.max(ymax, plotPts[i].thr * 1.2);
+    }
     ymax *= 1.1;
     var pad = 22;
     var X = function (t) { return (t - tStart) / (PLOT_S * 1e6) * w; };
@@ -350,7 +526,6 @@ if (typeof module !== 'undefined') module.exports = Core;
     var css = getComputedStyle(document.body).color;
     g.fillStyle = css; g.globalAlpha = 0.6; g.font = '11px system-ui, sans-serif';
     g.fillText(ymax.toFixed(1) + ' m/s²', 4, 12);
-    g.fillText('last ' + PLOT_S + ' s', w - 52, h - 6);
     g.globalAlpha = 1;
     // bumps
     g.fillStyle = 'rgba(198,40,40,0.18)'; g.strokeStyle = '#c62828'; g.lineWidth = 2;
@@ -369,7 +544,23 @@ if (typeof module !== 'undefined') module.exports = Core;
     }
     if (plotPts.length > 1) { line('hp', '#8a94a6', 1); line('env', '#1f6feb', 2.5); }
     g.setLineDash([6, 4]); g.strokeStyle = '#e08a00'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(0, Y(threshold)); g.lineTo(w, Y(threshold)); g.stroke();
+    if (mode === 'manual' || plotPts.length < 2) {
+      // fixed line: the manual threshold, or (before data) the auto minimum
+      g.globalAlpha = mode === 'manual' ? 1 : 0.4;
+      g.beginPath(); g.moveTo(0, Y(threshold)); g.lineTo(w, Y(threshold)); g.stroke();
+      g.globalAlpha = 1;
+    } else {
+      // the auto threshold as it moved; gaps where there was no background yet
+      g.beginPath();
+      var pen = false;
+      for (var q = 0; q < plotPts.length; q++) {
+        var pt = plotPts[q];
+        if (!isFinite(pt.thr)) { pen = false; continue; }
+        if (pen) g.lineTo(X(pt.t_us), Y(pt.thr)); else g.moveTo(X(pt.t_us), Y(pt.thr));
+        pen = true;
+      }
+      g.stroke();
+    }
     g.setLineDash([]);
   }
 
@@ -435,7 +626,8 @@ if (typeof module !== 'undefined') module.exports = Core;
     samples.push({ t_us: t_us, ax: a.x, ay: a.y, az: a.z });
     var r = proc.push(t_us, a.x, a.y, a.z);
     lastEnv = r.env;
-    plotPts.push({ t_us: t_us, hp: r.hp, env: r.env });
+    lastThrInfo = r.thr_info;
+    plotPts.push({ t_us: t_us, hp: r.hp, env: r.env, thr: r.thr });
     var cut = t_us - PLOT_S * 1e6;
     while (plotPts.length && plotPts[0].t_us < cut) plotPts.shift();
     if (r.bump) { nBumps++; lastPeak = r.bump.peak_env; }
@@ -455,6 +647,9 @@ if (typeof module !== 'undefined') module.exports = Core;
     $('bumps').textContent = nBumps;
     $('envNow').textContent = isFinite(lastEnv) ? lastEnv.toFixed(2) : '–';
     $('lastPeak').textContent = isFinite(lastPeak) ? lastPeak.toFixed(2) : '–';
+    showFormula();
+    var tNow = lastThrInfo ? lastThrInfo.thr : (mode === 'manual' ? Number(thr.value) : NaN);
+    $('thrNow').textContent = isFinite(tNow) ? tNow.toFixed(2) : '–';
     if (wasHidden) {
       setStatus('Page was hidden during recording; expect a gap (see max_gap_ms).', true);
     } else if (n === 0 && performance.now() - startMs > 2000) {
@@ -462,7 +657,7 @@ if (typeof module !== 'undefined') module.exports = Core;
         ? 'Motion events arrive but carry no acceleration. This device may have no accelerometer.'
         : 'No motion events yet. Check that this page is open on localhost or HTTPS and that motion sensors are allowed in site settings.', true);
     } else if (n > 0) {
-      setStatus('Recording…');
+      setStatus('');
     }
   }
 
@@ -499,14 +694,18 @@ if (typeof module !== 'undefined') module.exports = Core;
     samples = []; sources = {}; noData = 0; wasHidden = false;
     lastFiles = null; shareBtn.disabled = true;
     if (bridge) { try { bridge.clearShare(); } catch (e) { /* nothing to clear */ } }
-    proc = Core.createProcessor({ threshold_mps2: Number(thr.value) });
+    proc = Core.createProcessor(mode === 'auto'
+      ? { threshold_mode: 'auto', min_threshold_mps2: Number(thr.value) }
+      : { threshold_mode: 'manual', threshold_mps2: Number(thr.value) });
+    lastThrInfo = null;
+    for (var mj = 0; mj < modeInputs.length; mj++) modeInputs[mj].disabled = true;
     plotPts = []; plotBumps = []; nBumps = 0; lastEnv = NaN; lastPeak = NaN;
     thr.disabled = true;   // one threshold per recording, so meta.txt states it exactly
     startMs = performance.now();
     startIso = new Date().toISOString();
     recording = true;
     window.addEventListener('devicemotion', onMotion);
-    btn.textContent = 'Stop'; btn.classList.add('recording');
+    btn.textContent = 'Stop'; btn.classList.add('recording'); $('recDot').className = 'dot';
     $('session').disabled = true;
     setStatus('Waiting for motion events…');
     timer = setInterval(refresh, 250);
@@ -520,13 +719,14 @@ if (typeof module !== 'undefined') module.exports = Core;
     clearInterval(timer);
     cancelAnimationFrame(raf);
     thr.disabled = false;
+    for (var mk = 0; mk < modeInputs.length; mk++) modeInputs[mk].disabled = false;
     var allBumps = proc ? proc.finish() : [];
     nBumps = allBumps.length;
     if (allBumps.length) lastPeak = allBumps[allBumps.length - 1].peak_env;
     refresh();
     draw();
     if (wakeLock) { wakeLock.release().catch(function () {}); wakeLock = null; }
-    btn.textContent = 'Start'; btn.classList.remove('recording');
+    btn.textContent = 'Start'; btn.classList.remove('recording'); $('recDot').className = '';
     $('session').disabled = false;
     if (samples.length === 0) {
       setStatus('No samples were recorded, so no files were saved.', true);
@@ -570,7 +770,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   });
 
   getDeviceModel().then(function (m) { deviceModel = m; });
-  draw();
+  applyMode();
   window.addEventListener('resize', draw);
   if (!window.isSecureContext) {
     setStatus('Not a secure context: motion sensors are blocked. Use http://localhost:8080 or HTTPS.', true);

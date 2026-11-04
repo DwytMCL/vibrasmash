@@ -64,9 +64,10 @@ t('bump during warm-up (first 1 s) is ignored', () => {
 t('two bumps closer than the refractory period count once', () => {
   assert.strictEqual(run(stream(5, [2.0, 2.15])).bumps.length, 1);
 });
-t('higher threshold -> fewer detections', () => {
+t('manual mode: higher threshold -> fewer detections', () => {
   const s = stream(9, [2.0, 4.5, 7.0]);
-  assert.ok(run(s, { threshold_mps2: 50 }).bumps.length === 0);
+  assert.ok(run(s, { threshold_mode: 'manual', threshold_mps2: 50 }).bumps.length === 0);
+  assert.strictEqual(run(s, { threshold_mode: 'manual', threshold_mps2: 2 }).bumps.length, 3);
 });
 t('repeated / backwards timestamps do not crash or produce NaN', () => {
   const p = Core.createProcessor();
@@ -77,14 +78,99 @@ t('repeated / backwards timestamps do not crash or produce NaN', () => {
 });
 t('undersampling: a 20 ms impact can fall between 60 Hz samples and be missed', () => {
   // Same bump times as above, short impacts, no jitter: at least one is missed.
-  const n = run(stream(9, [2.0, 4.5, 7.0], { short: true })).bumps.length;
+  // Fixed 2 m/s2 threshold so only the sampling changes between runs.
+  const manual = { threshold_mode: 'manual', threshold_mps2: 2 };
+  const short = run(stream(9, [2.0, 4.5, 7.0], { short: true }), manual);
+  const n = short.bumps.length;
+  // the envelope peak seen at 60 Hz depends on where the samples land
+  const peaks = short.res.map((r) => r.env);
+  assert.ok(Math.max(...peaks) < 8, 'sampled peak should be far below the 8 m/s2 true peak');
   assert.ok(n < 3, 'expected a miss, got ' + n);
   console.log('    (SYNTHETIC) short impacts detected: ' + n + ' of 3; this is why VibraSmash samples at 20 kHz');
+});
+// ---- Auto threshold: max(median + 6 x MAD of background, minimum) ----
+t('medianMad matches the pipeline definition (unscaled MAD)', () => {
+  const mm = Core.medianMad([1, 2, 3, 4, 100]);       // devs 2,1,0,1,97 -> median 1
+  assert.strictEqual(mm.median, 3);
+  assert.strictEqual(mm.mad, 1);
+  const even = Core.medianMad([1, 2, 3, 4]);           // median 2.5; devs 1.5,.5,.5,1.5 -> 1
+  assert.strictEqual(even.median, 2.5);
+  assert.strictEqual(even.mad, 1);
+});
+t('auto is the default mode', () => {
+  assert.strictEqual(Core.DSP_DEFAULTS.threshold_mode, 'auto');
+  assert.strictEqual(Core.DSP_DEFAULTS.mad_k, 6);
+});
+t('auto: no threshold (and no detection) until 1 s of background after warm-up', () => {
+  const { res, bumps } = run(stream(3, [1.5]));
+  const at = (sec) => res[Math.round(sec * 60)];
+  assert.ok(Number.isNaN(at(0.5).thr) && Number.isNaN(at(1.5).thr));
+  assert.strictEqual(at(1.5).thr_info.limited_by, 'no_background');
+  assert.ok(Number.isFinite(at(2.5).thr));
+  assert.strictEqual(bumps.length, 0);
+});
+t('auto: quiet background -> threshold held at the minimum', () => {
+  const { res } = run(stream(6, []));
+  const ti = res[res.length - 1].thr_info;
+  assert.strictEqual(ti.limited_by, 'minimum');
+  assert.strictEqual(ti.thr, Core.DSP_DEFAULTS.min_threshold_mps2);
+  assert.ok(ti.median + 6 * ti.mad < ti.thr);
+});
+t('auto: threshold equals median + 6 x MAD of the background when above the minimum', () => {
+  const { res } = run(stream(6, []), { min_threshold_mps2: 0.001 });
+  const last = res[res.length - 1], ti = last.thr_info;
+  assert.strictEqual(ti.limited_by, 'statistical');
+  assert.ok(Math.abs(ti.thr - (ti.median + 6 * ti.mad)) < 1e-12);
+  // recompute from the envelope values the processor saw (last 5 s, no bumps here)
+  const t_end = res.length - 1;
+  const bg = res.slice(0, t_end).map((r, i) => ({ i, env: r.env }))
+    .filter(({ i }) => i / 60 >= 1.0 && (t_end - i) / 60 <= 5.0 + 1e-9).map((x) => x.env);
+  const mm = Core.medianMad(bg);
+  assert.ok(Math.abs(ti.median - mm.median) < 0.02 && Math.abs(ti.mad - mm.mad) < 0.02);
+});
+t('auto: three bumps on a quiet background -> three detections', () => {
+  const at = [3.0, 5.5, 8.0];
+  const { bumps } = run(stream(10, at, { jitter: true }));
+  assert.strictEqual(bumps.length, 3);
+  bumps.forEach((b, i) => assert.ok(Math.abs(b.t_us / 1e6 - at[i]) < 0.1));
+});
+t('auto: ongoing vibration raises the threshold, so the vibration itself is not counted', () => {
+  // strong ongoing vibration (e.g. walking) plus one bump of similar size
+  const s = stream(10, []).map(([tu, x, y, z]) => [tu, x + 1.2 * Math.sin(2 * Math.PI * 7 * tu / 1e6), y, z]);
+  const quietMin = run(s, { min_threshold_mps2: 0.5 });
+  const ti = quietMin.res[quietMin.res.length - 1].thr_info;
+  assert.strictEqual(ti.limited_by, 'statistical');
+  assert.ok(ti.thr > 0.5);
+  // a fixed 0.5 m/s2 threshold would fire on the vibration itself
+  assert.ok(run(s, { threshold_mode: 'manual', threshold_mps2: 0.5 }).bumps.length >= 1);
+  assert.strictEqual(quietMin.bumps.length, 0);
+});
+t('auto: bump samples are left out of the background (threshold unchanged by a bump)', () => {
+  const quiet = run(stream(9, []), { min_threshold_mps2: 0.001 });
+  seed = 1;
+  const withBump = run(stream(9, [6.0]), { min_threshold_mps2: 0.001 });
+  seed = 1;
+  assert.strictEqual(withBump.bumps.length, 1);
+  const i = Math.round(6.8 * 60);   // after the bump has ended
+  const a = quiet.res[i].thr, b = withBump.res[i].thr;
+  assert.ok(Math.abs(a - b) / a < 0.5, 'threshold moved from ' + a + ' to ' + b);
+});
+t('auto: each bump records the threshold it crossed and why', () => {
+  const { bumps } = run(stream(9, [3.0]));
+  assert.strictEqual(bumps[0].limited_by, 'minimum');
+  assert.strictEqual(bumps[0].thr, Core.DSP_DEFAULTS.min_threshold_mps2);
 });
 t('buildDemoMeta lists settings and bump times', () => {
   const { bumps, settings } = run(stream(9, [2.0, 4.5, 7.0]));
   const meta = Core.buildDemoMeta(settings, bumps);
   assert.ok(meta.includes('demo_n_bumps=3'));
+  assert.ok(meta.includes('demo_threshold_mode=auto_median_plus_k_mad'));
+  assert.ok(meta.includes('demo_mad_k=6'));
+  assert.ok(meta.includes('demo_min_threshold_mps2=0.5'));
+  assert.ok(/demo_bump_threshold_limited_by=minimum minimum minimum/.test(meta));
+  const manual = Core.buildDemoMeta(Core.createProcessor({ threshold_mode: 'manual', threshold_mps2: 2 }).settings, []);
+  assert.ok(manual.includes('demo_threshold_mode=manual') && manual.includes('demo_threshold_mps2=2'));
+  assert.ok(!manual.includes('demo_mad_k'));
   assert.ok(/demo_bump_t_s=2\.\d{3} 4\.\d{3} 7\.\d{3}/.test(meta));
   assert.ok(meta.includes('not the VibraSmash pipeline settings'));
   console.log('--- SYNTHETIC demo meta ---\n' + meta + '--- end SYNTHETIC demo meta ---');
