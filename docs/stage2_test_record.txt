@@ -1,0 +1,45 @@
+# Stage 2 test record
+#
+# == MATLAB run on Dwight's PC (reported 2026-10-21T04:08Z) ==
+# MATLAB 26.2.0.3386108 (R2026b) on PCWIN64, Signal Processing Toolbox installed.
+# run_tests: 28 / 28 passed, returned true (default_config 6, environment 2,
+# imu_sensitivity 3, synthetic_fixture 17). All inputs were synthetic test data.
+#
+# == Earlier check in the build environment (Octave, not MATLAB) ==
+#
+# Run in the build environment under GNU Octave 8.4.0 +
+# signal 1.4.5 (Linux), calling each test function directly through a small
+# harness because run_tests.m needs MATLAB's unit test framework.
+# Mutation check: making the generator start bursts 2 ms late and put the
+# swing after the impact made the two signal-placement tests fail (26 / 28),
+# so they detect those mistakes. The generator was then restored.
+
+  pass test_default_config/testReturnsStructWithProvenance
+  pass test_default_config/testEverySettingHasKnownSourceAndNote
+  pass test_default_config/testSettingPathsAreUnique
+  pass test_default_config/testPilotSettingsAreEmptyUntilMeasured
+  pass test_default_config/testProposalValuesArePinned
+  pass test_default_config/testFftGeometryMatchesProposal
+  pass test_environment/testReportHasExpectedFields
+  pass test_environment/testEnvironmentMeetsRequirements
+  pass test_imu_sensitivity/testProposalRangesMatchDatasheet
+  pass test_imu_sensitivity/testAllDatasheetRanges
+  pass test_imu_sensitivity/testUnsupportedRangeIsAnError
+  pass test_synthetic_fixture/testNoArgumentReturnsDefaultSpecOnly
+  pass test_synthetic_fixture/testFolderAndMetaAreLabelledSynthetic
+  pass test_synthetic_fixture/testRefusesToWriteInsideDataFolder
+  pass test_synthetic_fixture/testRejectsUnknownEventCategory
+  pass test_synthetic_fixture/testPiezoCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testImuCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testTruthFileListsPlantedEvents
+  pass test_synthetic_fixture/testPiezoBurstStartsAtOnsetWithPlantedAmplitude
+  pass test_synthetic_fixture/testGyroPeakPrecedesImpactByPlantedLead
+  pass test_synthetic_fixture/testLargeBurstClipsAtAdcLimits
+  pass test_synthetic_fixture/testDroppedSamplesLeaveTimestampGap
+  pass test_synthetic_fixture/testDuplicateTimestampIsWritten
+  pass test_synthetic_fixture/testActualRateCanDifferFromNominal
+  pass test_synthetic_fixture/testTriggeredModeKeepsOnlyEventRecords
+  pass test_synthetic_fixture/testSameSeedGivesIdenticalFiles
+  pass test_synthetic_fixture/testDifferentSeedGivesDifferentNoise
+  pass test_synthetic_fixture/testCallerRandomStateIsRestored
+Octave harness: 28 / 28

@@ -1,0 +1,77 @@
+# Stage 3 test record
+#
+# == MATLAB run on Dwight's PC (reported 2026-10-21T04:17Z) ==
+# MATLAB R2026b on PCWIN64: run_tests reported "Total: 61 / 61 tests passed".
+# (Only the total was reported.) All inputs were synthetic fixtures.
+#
+# == Earlier check in the build environment (Octave, not MATLAB) ==
+#
+# Run in the build environment under GNU Octave 8.4.0 +
+# signal 1.4.5 (Linux), calling each test function directly through a small
+# harness because run_tests.m needs MATLAB's unit test framework.
+# All inputs are synthetic fixtures with planted faults; no real recordings exist.
+# Mutation check: disabling the duplicate-timestamp count and the ADC clipping
+# check made 3 tests fail (58 / 61). The validator was then restored.
+
+  pass test_default_config/testReturnsStructWithProvenance
+  pass test_default_config/testEverySettingHasKnownSourceAndNote
+  pass test_default_config/testSettingPathsAreUnique
+  pass test_default_config/testPilotSettingsAreEmptyUntilMeasured
+  pass test_default_config/testProposalValuesArePinned
+  pass test_default_config/testFftGeometryMatchesProposal
+  pass test_environment/testReportHasExpectedFields
+  pass test_environment/testEnvironmentMeetsRequirements
+  pass test_imu_sensitivity/testProposalRangesMatchDatasheet
+  pass test_imu_sensitivity/testAllDatasheetRanges
+  pass test_imu_sensitivity/testUnsupportedRangeIsAnError
+  pass test_read_recording/testReadsSyntheticFixture
+  pass test_read_recording/testUnitConversionsFollowDocumentedFormulas
+  pass test_read_recording/testCalibratedMillivoltColumnIsPreferred
+  pass test_read_recording/testColumnOrderDoesNotMatter
+  pass test_read_recording/testWindowsLineEndingsAreRead
+  pass test_read_recording/testRowsKeepFileOrder
+  pass test_read_recording/testTriggeredModeReadsRecordIds
+  pass test_read_recording/testMissingMetaKeyIsAnError
+  pass test_read_recording/testDuplicateMetaKeyIsAnError
+  pass test_read_recording/testUnsupportedFormatVersionIsAnError
+  pass test_read_recording/testUnsupportedGyroRangeIsAnError
+  pass test_read_recording/testMissingColumnIsAnError
+  pass test_read_recording/testTriggeredModeWithoutRecordIdIsAnError
+  pass test_read_recording/testNonNumericContentIsAnError
+  pass test_read_recording/testMissingFileIsAnError
+  pass test_synthetic_fixture/testNoArgumentReturnsDefaultSpecOnly
+  pass test_synthetic_fixture/testFolderAndMetaAreLabelledSynthetic
+  pass test_synthetic_fixture/testRefusesToWriteInsideDataFolder
+  pass test_synthetic_fixture/testRejectsUnknownEventCategory
+  pass test_synthetic_fixture/testPiezoCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testImuCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testTruthFileListsPlantedEvents
+  pass test_synthetic_fixture/testPiezoBurstStartsAtOnsetWithPlantedAmplitude
+  pass test_synthetic_fixture/testGyroPeakPrecedesImpactByPlantedLead
+  pass test_synthetic_fixture/testLargeBurstClipsAtAdcLimits
+  pass test_synthetic_fixture/testDroppedSamplesLeaveTimestampGap
+  pass test_synthetic_fixture/testDuplicateTimestampIsWritten
+  pass test_synthetic_fixture/testActualRateCanDifferFromNominal
+  pass test_synthetic_fixture/testTriggeredModeKeepsOnlyEventRecords
+  pass test_synthetic_fixture/testSameSeedGivesIdenticalFiles
+  pass test_synthetic_fixture/testDifferentSeedGivesDifferentNoise
+  pass test_synthetic_fixture/testCallerRandomStateIsRestored
+  pass test_validate_recording/testCleanContinuousFixtureIsClean
+  pass test_validate_recording/testCleanTriggeredFixtureIsClean
+  pass test_validate_recording/testDroppedSamplesAreCountedNotFilled
+  pass test_validate_recording/testSmallGapIsFlaggedButBelowMissingTarget
+  pass test_validate_recording/testDuplicateTimestampIsFlagged
+  pass test_validate_recording/testBackwardsTimestampIsFlagged
+  pass test_validate_recording/testClockWrapIsFlagged
+  pass test_validate_recording/testRateMismatchIsFlaggedAndMeasured
+  pass test_validate_recording/testSmallRateDeviationIsWithinTolerance
+  pass test_validate_recording/testImuJitterIsReportedNotFlagged
+  pass test_validate_recording/testAdcClippingIsFlaggedWithMask
+  pass test_validate_recording/testGyroClippingIsFlagged
+  pass test_validate_recording/testEmptyCellIsFlaggedAsNan
+  pass test_validate_recording/testShortRecordIsFlagged
+  pass test_validate_recording/testImuNotCoveringPiezoIsFlagged
+  pass test_validate_recording/testRecordIdMismatchIsFlagged
+  pass test_validate_recording/testFrameDerivedTimestampsAreANoteNotAFlag
+  pass test_validate_recording/testSummaryShowsSyntheticLabelAndFlags
+Octave harness: 61 / 61

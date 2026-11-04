@@ -1,0 +1,57 @@
+# Stage 1 test record
+#
+# == MATLAB run on Dwight's PC (reported 2026-10-21T03:50Z) ==
+# MATLAB 26.2.0.3386108 (R2026b) on PCWIN64, Signal Processing Toolbox installed.
+# run_tests: 8 / 8 passed, returned true. (An earlier run the same day was 7 / 8;
+# the only failure was testEnvironmentMeetsRequirements because the Signal
+# Processing Toolbox was not yet installed. Installing it fixed that.)
+# smoke_test (reported 2026-10-21T03:57Z, same machine): PASSED, 8 checks.
+#   PASS  platform version  MATLAB 26.2.0.3386108 (R2026b) (need >= 9.7 (R2019b))
+#   PASS  signal toolbox installed  Signal Processing Toolbox 26.2
+#   PASS  signal toolbox licensed
+#   PASS  required functions
+#   PASS  butter + filtfilt  500 Hz passband gain 1.0000
+#   PASS  hann + fft  peak at 976.5625 Hz, expected 976.5625 Hz
+#   PASS  csv read/write
+#   PASS  plot to png
+# run_tests re-run at 03:57Z: 8 / 8 passed again.
+#
+#   test_default_config/testReturnsStructWithProvenance          passed
+#   test_default_config/testEverySettingHasKnownSourceAndNote    passed
+#   test_default_config/testSettingPathsAreUnique                passed
+#   test_default_config/testPilotSettingsAreEmptyUntilMeasured   passed
+#   test_default_config/testProposalValuesArePinned              passed
+#   test_default_config/testFftGeometryMatchesProposal           passed
+#   test_environment/testReportHasExpectedFields                 passed
+#   test_environment/testEnvironmentMeetsRequirements            passed
+#   Total: 8 / 8 tests passed
+#
+# == Earlier check in the build environment (Octave, not MATLAB) ==
+#
+# NOT RUN IN MATLAB. MATLAB is not available in the build environment.
+# What was run: the same .m files under GNU Octave 8.4.0 + signal 1.4.5 on Linux.
+# run_tests.m needs MATLAB's unit test framework, so the 8 test functions were
+# called directly by a small Octave harness (not shipped). This checks the logic,
+# not MATLAB-specific behaviour. Dwight's MATLAB run replaces this record.
+
+VibraSmash smoke test
+  PASS  platform version  GNU Octave 8.4.0 (need >= 8.4.0)
+  PASS  signal toolbox installed  Octave signal package 1.4.5
+  PASS  signal toolbox licensed  
+  PASS  required functions  
+  PASS  butter + filtfilt  500 Hz passband gain 1.0000
+  PASS  hann + fft  peak at 976.5625 Hz, expected 976.5625 Hz
+  PASS  csv read/write  
+  PASS  plot to png  
+Smoke test PASSED (8 checks)
+ans = 1
+
+  pass test_default_config/testReturnsStructWithProvenance
+  pass test_default_config/testEverySettingHasKnownSourceAndNote
+  pass test_default_config/testSettingPathsAreUnique
+  pass test_default_config/testPilotSettingsAreEmptyUntilMeasured
+  pass test_default_config/testProposalValuesArePinned
+  pass test_default_config/testFftGeometryMatchesProposal
+  pass test_environment/testReportHasExpectedFields
+  pass test_environment/testEnvironmentMeetsRequirements
+Octave harness: 8 / 8

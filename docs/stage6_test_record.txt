@@ -1,0 +1,132 @@
+# Stage 6 test record, 2026-10-21T05:21Z
+#
+# NOT YET RUN IN MATLAB. Run in the build environment under GNU Octave 8.4.0 +
+# signal 1.4.5 (Linux) through a small harness (run_tests.m needs MATLAB).
+# All inputs are synthetic. Tests use a noise floor of 5 mV and a swing
+# threshold of 60 deg/s chosen for the synthetic noise, not measured values.
+# Mutation checks: computing RMS as the mean absolute value failed 2 tests;
+# removing the second-event ratio rule failed 2 tests.
+# Finding on synthetic data: before the ratio rule, the decaying tail of a
+# single burst re-crossed the threshold inside the 100 ms window on 6 of 10
+# seeds and would have invalidated those shots as "second events".
+
+  pass test_default_config/testReturnsStructWithProvenance
+  pass test_default_config/testEverySettingHasKnownSourceAndNote
+  pass test_default_config/testSettingPathsAreUnique
+  pass test_default_config/testPilotSettingsAreEmptyUntilMeasured
+  pass test_default_config/testProposalValuesArePinned
+  pass test_default_config/testFftGeometryMatchesProposal
+  pass test_detect/testMovingRmsOfConstantMagnitudeIsThatMagnitude
+  pass test_detect/testTrailingWindowUsesOnlyPastSamples
+  pass test_detect/testCenteredWindowAlignment
+  pass test_detect/testEnvelopeStaysInsideSegments
+  pass test_detect/testThresholdIsMedianPlusSixMad
+  pass test_detect/testNoiseFloorLimitsThreshold
+  pass test_detect/testNoiseFloorIsRequired
+  pass test_detect/testDetectionRefusesWithoutNoiseFloor
+  pass test_detect/testDetectsPlantedBurstsNearTheirOnsets
+  pass test_detect/testNoiseOnlyGivesNoDetections
+  pass test_detect/testRefractoryCountsBurstsWithin150msOnce
+  pass test_detect/testRingingWithinRefractoryIsCountedOnce
+  pass test_detect/testRingingLongerThanRefractoryIsCountedAgain
+  pass test_detect/testDistractorsPiezoOnlyVersusSwingConfirmed
+  pass test_detect/testSwingRuleIsNotAppliedToStationaryTests
+  pass test_detect/testSwingRuleAppliedWhenEnabled
+  pass test_detect/testSwingRuleEnabledWithoutThresholdIsAnError
+  pass test_detect/testTriggeredRecordsGetTheirOwnThresholds
+  pass test_detect/testCrossingInFilterEdgeZoneIsListedNotCounted
+  pass test_detect/testAngularSpeedIsVectorMagnitude
+  pass test_detect/testPreimpactPeakUsesTheWindowBeforeOnset
+  pass test_environment/testReportHasExpectedFields
+  pass test_environment/testEnvironmentMeetsRequirements
+  pass test_features/testRmsFormula
+  pass test_features/testSpectrumReadsSineAmplitudeAtBinCentre
+  pass test_features/testSpectrumRefusesNanAndOddLength
+  pass test_features/testFeaturesOfPlantedContacts
+  pass test_features/testBinsAndRmsLengthUseMeasuredRate
+  pass test_features/testIncompleteWindowsGiveNoValue
+  pass test_features/testGapInsideWindowIsFlaggedValueKept
+  pass test_features/testClippingIsFlagged
+  pass test_features/testSecondBurstInsideWindowIsFlagged
+  pass test_features/testRingingTailIsNotASecondEvent
+  pass test_features/testRejectedDetectionsStayInTheTable
+  pass test_features/testShortPreTriggerMakesSwingWindowIncomplete
+  pass test_features/testReferenceIsMedianOfValidShotsAndIndexIs100There
+  pass test_features/testReferenceCombinesSessionsAndReportsShortfall
+  pass test_features/testReferenceRules
+  pass test_features/testIndexRefusesAnotherSetupAndNeedsAReference
+  pass test_features/testSyntheticReferenceSessionEndToEnd
+  pass test_features/testSessionRole
+  pass test_features/testGeneratorKeepsSyntheticLabels
+  pass test_imu_sensitivity/testProposalRangesMatchDatasheet
+  pass test_imu_sensitivity/testAllDatasheetRanges
+  pass test_imu_sensitivity/testUnsupportedRangeIsAnError
+  pass test_preprocess/testDesignsUseProposalOrdersAndCutoffs
+  pass test_preprocess/testSinglePassResponseIsMinus3dBAtCutoff
+  pass test_preprocess/testDesignUsesMeasuredRate
+  pass test_preprocess/testCutoffAboveNyquistIsAnError
+  pass test_preprocess/testZeroPhaseResponseIsMinus6dBAtEachCutoff
+  pass test_preprocess/testPassbandIsKeptAndStopbandRemoved
+  pass test_preprocess/testFilteringAddsNoPhaseShift
+  pass test_preprocess/testPaddingRemovesEdgeTransient
+  pass test_preprocess/testSegmentsAreFilteredIndependently
+  pass test_preprocess/testNanSamplesStayNanAndDoNotSpread
+  pass test_preprocess/testRunsTooShortToFilterAreLeftNan
+  pass test_preprocess/testSegmentsSplitAtRecordsAndBreaks
+  pass test_preprocess/testContinuousBiasIsRecordMedian
+  pass test_preprocess/testTriggeredBiasUsesPreTriggerSamplesPerRecord
+  pass test_preprocess/testPreprocessKeepsSamplesAndUsesMeasuredRates
+  pass test_preprocess/testPlantedBurstSurvivesFiltering
+  pass test_preprocess/testFilteredGyroKeepsPlantedSwingPeak
+  pass test_preprocess/testGapSplitsFilteringAndEdgesAreMarked
+  pass test_read_recording/testReadsSyntheticFixture
+  pass test_read_recording/testUnitConversionsFollowDocumentedFormulas
+  pass test_read_recording/testCalibratedMillivoltColumnIsPreferred
+  pass test_read_recording/testColumnOrderDoesNotMatter
+  pass test_read_recording/testWindowsLineEndingsAreRead
+  pass test_read_recording/testRowsKeepFileOrder
+  pass test_read_recording/testTriggeredModeReadsRecordIds
+  pass test_read_recording/testMissingMetaKeyIsAnError
+  pass test_read_recording/testDuplicateMetaKeyIsAnError
+  pass test_read_recording/testUnsupportedFormatVersionIsAnError
+  pass test_read_recording/testUnsupportedGyroRangeIsAnError
+  pass test_read_recording/testMissingColumnIsAnError
+  pass test_read_recording/testTriggeredModeWithoutRecordIdIsAnError
+  pass test_read_recording/testNonNumericContentIsAnError
+  pass test_read_recording/testMissingFileIsAnError
+  pass test_synthetic_fixture/testNoArgumentReturnsDefaultSpecOnly
+  pass test_synthetic_fixture/testFolderAndMetaAreLabelledSynthetic
+  pass test_synthetic_fixture/testRefusesToWriteInsideDataFolder
+  pass test_synthetic_fixture/testRejectsUnknownEventCategory
+  pass test_synthetic_fixture/testPiezoCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testImuCsvLoadsAsPlainCsv
+  pass test_synthetic_fixture/testTruthFileListsPlantedEvents
+  pass test_synthetic_fixture/testPiezoBurstStartsAtOnsetWithPlantedAmplitude
+  pass test_synthetic_fixture/testGyroPeakPrecedesImpactByPlantedLead
+  pass test_synthetic_fixture/testLargeBurstClipsAtAdcLimits
+  pass test_synthetic_fixture/testDroppedSamplesLeaveTimestampGap
+  pass test_synthetic_fixture/testDuplicateTimestampIsWritten
+  pass test_synthetic_fixture/testActualRateCanDifferFromNominal
+  pass test_synthetic_fixture/testTriggeredModeKeepsOnlyEventRecords
+  pass test_synthetic_fixture/testSameSeedGivesIdenticalFiles
+  pass test_synthetic_fixture/testDifferentSeedGivesDifferentNoise
+  pass test_synthetic_fixture/testCallerRandomStateIsRestored
+  pass test_validate_recording/testCleanContinuousFixtureIsClean
+  pass test_validate_recording/testCleanTriggeredFixtureIsClean
+  pass test_validate_recording/testDroppedSamplesAreCountedNotFilled
+  pass test_validate_recording/testSmallGapIsFlaggedButBelowMissingTarget
+  pass test_validate_recording/testDuplicateTimestampIsFlagged
+  pass test_validate_recording/testBackwardsTimestampIsFlagged
+  pass test_validate_recording/testClockWrapIsFlagged
+  pass test_validate_recording/testRateMismatchIsFlaggedAndMeasured
+  pass test_validate_recording/testSmallRateDeviationIsWithinTolerance
+  pass test_validate_recording/testImuJitterIsReportedNotFlagged
+  pass test_validate_recording/testAdcClippingIsFlaggedWithMask
+  pass test_validate_recording/testGyroClippingIsFlagged
+  pass test_validate_recording/testEmptyCellIsFlaggedAsNan
+  pass test_validate_recording/testShortRecordIsFlagged
+  pass test_validate_recording/testImuNotCoveringPiezoIsFlagged
+  pass test_validate_recording/testRecordIdMismatchIsFlagged
+  pass test_validate_recording/testFrameDerivedTimestampsAreANoteNotAFlag
+  pass test_validate_recording/testSummaryShowsSyntheticLabelAndFlags
+Octave harness: 119 / 119
