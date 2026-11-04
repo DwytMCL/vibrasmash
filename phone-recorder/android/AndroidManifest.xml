@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.vibrasmash.recorder">
+
+    <!-- Needed by the WebView to load its built-in https://appassets.androidplatform.net
+         address. The app answers every request itself from the APK and blocks all other
+         hosts (see MainActivity), so nothing is sent or loaded over the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="VibraSmash Recorder"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Serves the last recording's files to the app picked in the share menu. -->
+        <provider
+            android:name=".ShareProvider"
+            android:authorities="com.vibrasmash.recorder.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>
