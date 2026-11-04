@@ -55,12 +55,10 @@
   .sw.thr { background: repeating-linear-gradient(90deg, #e08a00 0 4px, transparent 4px 7px); }
   .sw.bump { background: #c62828; width: 4px; height: 11px; }
 
-  .readouts { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 8px; }
+  .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .readout { background: var(--soft); border-radius: 12px; padding: 10px; min-width: 0; }
   .readout b { display: block; font-size: 1.35rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .readout.big b { font-size: 1.9rem; color: var(--accent); }
-  .readout .sub { font-variant-numeric: tabular-nums; }
-  .readout span span { display: inline; }
   .readout span { display: block; font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 11px; padding: 3px; }
@@ -140,7 +138,8 @@
     <span><i class="sw bump"></i>bump</span>
   </div>
   <div class="readouts">
-    <div class="readout big"><b id="bumps">0</b><span>bumps</span><span class="sub">peak <span id="lastPeak">–</span></span></div>
+    <div class="readout big"><b id="bumps">0</b><span>bumps detected</span></div>
+    <div class="readout big"><b id="lastPeak">–</b><span>last peak m/s²</span></div>
     <div class="readout"><b id="envNow">–</b><span>envelope m/s²</span></div>
     <div class="readout"><b id="thrNow">–</b><span>threshold m/s²</span></div>
   </div>
