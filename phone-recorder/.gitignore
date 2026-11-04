@@ -1,0 +1,5 @@
+# Build output and the personal signing key are never committed.
+android/build/
+android/*.keystore
+*.apk
+*.apk.idsig

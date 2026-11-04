@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<title>VibraSmash Phone Recorder</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root { color-scheme: light dark; --accent: #1f6feb; --stop: #c62828; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px max(16px, env(safe-area-inset-left));
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: Canvas; color: CanvasText;
+    display: flex; flex-direction: column; gap: 16px; max-width: 520px; margin-inline: auto;
+  }
+  h1 { font-size: 1.25rem; margin: 0; }
+  .note { font-size: 0.85rem; opacity: 0.75; margin: 0; }
+  label { font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+  input {
+    font-size: 1.1rem; padding: 12px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+    background: Canvas; color: CanvasText;
+  }
+  #toggle {
+    font-size: 1.8rem; font-weight: 700; padding: 36px 0; border: 0; border-radius: 18px;
+    color: #fff; background: var(--accent); width: 100%;
+    touch-action: manipulation;
+  }
+  #toggle.recording { background: var(--stop); }
+  #share {
+    font-size: 1.15rem; font-weight: 600; padding: 16px 0; border-radius: 14px; width: 100%;
+    border: 2px solid var(--accent); color: var(--accent); background: transparent;
+    touch-action: manipulation;
+  }
+  #share:disabled { opacity: 0.4; }
+  #toggle:disabled { opacity: 0.5; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat {
+    border-radius: 12px; padding: 12px 8px; text-align: center;
+    background: color-mix(in srgb, CanvasText 7%, transparent);
+  }
+  .stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 0.75rem; opacity: 0.75; }
+  #status { min-height: 1.4em; font-size: 0.95rem; margin: 0; }
+  #status.error { color: var(--stop); font-weight: 600; }
+  h2 { font-size: 1.05rem; margin: 0; }
+  .demo { display: flex; flex-direction: column; gap: 12px; }
+  canvas { width: 100%; height: 220px; border-radius: 12px;
+    background: color-mix(in srgb, CanvasText 5%, transparent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; }
+  .sw { display: inline-block; width: 14px; height: 4px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .sw.hp { background: #8a94a6; } .sw.env { background: #1f6feb; height: 5px; }
+  .sw.thr { background: repeating-linear-gradient(90deg, #e08a00 0 4px, transparent 4px 7px); }
+  .sw.bump { background: #c62828; width: 4px; height: 12px; }
+  input[type=range] { padding: 0; }
+  .steps { margin: 0; padding-left: 1.3em; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+<h1>VibraSmash Phone Recorder</h1>
+<p class="note">Phone accelerometer only. This is not ESP32 piezo or IMU data.</p>
+
+<label>Session name
+  <input id="session" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+         placeholder="e.g. 2026-11-05_phone_01">
+</label>
+
+<button id="toggle" type="button">Start</button>
+<button id="share" type="button" disabled>Share last recording</button>
+
+<div class="stats">
+  <div class="stat"><b id="count">0</b><span>samples</span></div>
+  <div class="stat"><b id="elapsed">0.0 s</b><span>elapsed</span></div>
+  <div class="stat"><b id="rate">–</b><span>rate (Hz)</span></div>
+</div>
+
+<p id="status" role="status"></p>
+
+<section class="demo">
+  <h2>Live DSP demo</h2>
+  <canvas id="plot" height="220" aria-label="Live plot of filtered signal, envelope and threshold"></canvas>
+  <div class="legend">
+    <span><i class="sw hp"></i>high-passed |a|</span>
+    <span><i class="sw env"></i>RMS envelope</span>
+    <span><i class="sw thr"></i>threshold</span>
+    <span><i class="sw bump"></i>detected bump</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="bumps">0</b><span>bumps detected</span></div>
+    <div class="stat"><b id="envNow">–</b><span>envelope (m/s²)</span></div>
+    <div class="stat"><b id="lastPeak">–</b><span>last peak (m/s²)</span></div>
+  </div>
+  <label>Detection threshold: <b id="thrVal"></b> m/s²
+    <input id="thr" type="range" min="0.3" max="10" step="0.1">
+  </label>
+  <ol class="steps">
+    <li><b>High-pass filter</b> (first order, <span id="hpHz"></span> Hz) on each axis removes gravity and slow tilting.</li>
+    <li><b>Moving RMS envelope</b> over <span id="rmsMs"></span> ms of the filtered magnitude.</li>
+    <li><b>Threshold crossing</b> marks a bump; it re-arms when the envelope falls below half the
+        threshold, with a <span id="refMs"></span> ms refractory period.</li>
+  </ol>
+  <p class="note">This shows the same steps as the VibraSmash pipeline, scaled down to the phone's
+  sample rate. VibraSmash runs them on a 20 kHz piezo signal (80 Hz–2 kHz band, 5 ms RMS window).
+  The phone accelerometer delivers only about 50–100 Hz, so this is a demonstration of the
+  concept, not a measurement of racket impacts. The demo settings were not tuned on data.</p>
+</section>
+
+<p class="note">Keep the screen on and this page in front while recording. Browsers pause
+motion events when the page is hidden.</p>
+
+<script>
+// ===== BEGIN CORE (pure functions; tested by test/core.test.js) =====
+var Core = (function () {
+  // Pick acceleration from a DeviceMotionEvent-like object.
+  // Returns {x, y, z, source} or null when the event carries no usable data.
+  function pickAccel(ev) {
+    function ok(a) {
+      return a && isFinite(a.x) && isFinite(a.y) && isFinite(a.z) &&
+        a.x !== null && a.y !== null && a.z !== null;
+    }
+    if (ok(ev.accelerationIncludingGravity)) {
+      var g = ev.accelerationIncludingGravity;
+      return { x: g.x, y: g.y, z: g.z, source: 'includingGravity' };
+    }
+    if (ok(ev.acceleration)) {
+      var a = ev.acceleration;
+      return { x: a.x, y: a.y, z: a.z, source: 'acceleration' };
+    }
+    return null;
+  }
+
+  // event.timeStamp is a DOMHighResTimeStamp (ms since the page time origin)
+  // in current browsers, the same clock as performance.now(). Some old
+  // browsers used epoch ms or 0; then fall back to performance.now().
+  function eventTimeMs(ev, nowMs) {
+    var ts = ev.timeStamp;
+    if (typeof ts === 'number' && isFinite(ts) && ts > 0 && ts < 1e11) return ts;
+    return nowMs;
+  }
+
+  function toUs(eventMs, startMs) {
+    return Math.round((eventMs - startMs) * 1000);
+  }
+
+  function median(sorted) {
+    var n = sorted.length;
+    if (n === 0) return NaN;
+    return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  }
+
+  // samples: array of {t_us, ax, ay, az}, in arrival order (never sorted).
+  function stats(samples) {
+    var n = samples.length;
+    var out = { n_samples: n, duration_s: NaN, measured_rate_hz: NaN,
+                median_dt_ms: NaN, max_gap_ms: NaN };
+    if (n < 2) { if (n === 1) out.duration_s = 0; return out; }
+    var dts = [];
+    for (var i = 1; i < n; i++) dts.push((samples[i].t_us - samples[i - 1].t_us) / 1000);
+    out.duration_s = (samples[n - 1].t_us - samples[0].t_us) / 1e6;
+    out.measured_rate_hz = out.duration_s > 0 ? (n - 1) / out.duration_s : NaN;
+    var sorted = dts.slice().sort(function (a, b) { return a - b; });
+    out.median_dt_ms = median(sorted);
+    out.max_gap_ms = sorted[sorted.length - 1];
+    return out;
+  }
+
+  function buildCsv(samples) {
+    var lines = ['t_us,ax,ay,az'];
+    for (var i = 0; i < samples.length; i++) {
+      var s = samples[i];
+      lines.push(s.t_us + ',' + s.ax.toFixed(6) + ',' + s.ay.toFixed(6) + ',' + s.az.toFixed(6));
+    }
+    return lines.join('\n') + '\n';
+  }
+
+  function fmt(v, digits) {
+    return (typeof v === 'number' && isFinite(v)) ? v.toFixed(digits) : 'NaN';
+  }
+
+  // info: {session_id, device_model, user_agent, start_time_iso,
+  //        accel_sources: {includingGravity: n, acceleration: n},
+  //        n_events_without_data, synthetic}
+  function buildMeta(samples, info) {
+    var st = stats(samples);
+    var src = info.accel_sources || {};
+    var used = Object.keys(src).filter(function (k) { return src[k] > 0; });
+    var accelSource = used.length === 0 ? 'none' : used.length === 1 ? used[0] : 'mixed';
+    var clean = function (v) { return String(v == null ? '' : v).replace(/[\r\n]+/g, ' '); };
+    var lines = [];
+    if (info.synthetic) lines.push('# SYNTHETIC TEST DATA - generated fake events, not a measurement');
+    lines.push(
+      'sensor=phone_accelerometer',
+      'source=phone (not ESP32)',
+      'session_id=' + clean(info.session_id),
+      'device_model=' + clean(info.device_model),
+      'user_agent=' + clean(info.user_agent),
+      'start_time_iso=' + clean(info.start_time_iso),
+      'n_samples=' + st.n_samples,
+      'duration_s=' + fmt(st.duration_s, 6),
+      'measured_rate_hz=' + fmt(st.measured_rate_hz, 3),
+      'median_dt_ms=' + fmt(st.median_dt_ms, 3),
+      'max_gap_ms=' + fmt(st.max_gap_ms, 3),
+      'accel_source=' + accelSource,
+      'units=m/s^2',
+      'n_events_without_data=' + (info.n_events_without_data || 0)
+    );
+    if (info.synthetic) lines.push('synthetic=true');
+    return lines.join('\n') + '\n';
+  }
+
+  function sanitizeSession(name, now) {
+    var s = String(name || '').trim().replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    if (s) return s;
+    var d = now || new Date();
+    var p = function (v) { return String(v).padStart(2, '0'); };
+    return 'phone_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  // ---- DSP concept demo (same steps as the VibraSmash pipeline, at phone rate) ----
+  // Default demo settings. These are scaled to a ~50-100 Hz phone signal for a
+  // live demonstration. They are NOT the pipeline's settings (80 Hz-2 kHz band,
+  // 5 ms RMS window on a 20 kHz piezo signal) and nothing here was tuned on data.
+  var DSP_DEFAULTS = {
+    hp_cutoff_hz: 1.0,      // first-order high-pass: removes gravity and slow tilting
+    rms_window_s: 0.10,     // moving RMS envelope length
+    threshold_mps2: 2.0,    // detection threshold on the envelope (adjustable in the UI)
+    rearm_ratio: 0.5,       // envelope must fall below ratio x threshold before the next detection
+    refractory_s: 0.30,     // minimum time between detections
+    warmup_s: 1.0           // no detections while the filter settles after Start
+  };
+
+  // Streaming processor. push() takes one real sample with its own timestamp;
+  // the filter uses each actual interval dt, so irregular timing is handled
+  // without resampling. Returns {hp, env, bump} where bump is null or
+  // {t_us, peak_env} once the bump's envelope has fallen back (peak known).
+  function createProcessor(opts) {
+    var o = {};
+    for (var k in DSP_DEFAULTS) o[k] = (opts && opts[k] != null) ? opts[k] : DSP_DEFAULTS[k];
+    var rc = 1 / (2 * Math.PI * o.hp_cutoff_hz);
+    var prev = null, hp = [0, 0, 0], t0 = null;
+    var win = [], winSum = 0, winStart = 0;
+    var armed = true, active = null, lastBumpUs = -Infinity;
+    var bumps = [];
+
+    function push(t_us, ax, ay, az) {
+      var x = [ax, ay, az];
+      if (t0 === null) t0 = t_us;
+      if (prev === null || t_us <= prev.t_us) {
+        // first sample, or a repeated/backwards timestamp: no valid dt, hold the filter
+        if (prev === null) prev = { t_us: t_us, x: x };
+      } else {
+        var dt = (t_us - prev.t_us) / 1e6;
+        var a = rc / (rc + dt);
+        for (var i = 0; i < 3; i++) hp[i] = a * (hp[i] + x[i] - prev.x[i]);
+        prev = { t_us: t_us, x: x };
+      }
+      var mag2 = hp[0] * hp[0] + hp[1] * hp[1] + hp[2] * hp[2];
+
+      // moving RMS over the last rms_window_s of real samples
+      win.push({ t_us: t_us, v: mag2 }); winSum += mag2;
+      while (win[winStart].t_us < t_us - o.rms_window_s * 1e6) { winSum -= win[winStart].v; winStart++; }
+      if (winStart > 1024) { win = win.slice(winStart); winStart = 0; }
+      var env = Math.sqrt(Math.max(winSum, 0) / (win.length - winStart));
+
+      // threshold crossing with re-arm hysteresis and refractory period
+      var bump = null, settled = (t_us - t0) / 1e6 >= o.warmup_s;
+      if (active) {
+        if (env > active.peak_env) active.peak_env = env;
+        if (env < o.rearm_ratio * o.threshold_mps2) { bump = active; bumps.push(active); active = null; armed = true; }
+      } else if (!armed) {
+        if (env < o.rearm_ratio * o.threshold_mps2) armed = true;
+      } else if (settled && env >= o.threshold_mps2 && (t_us - lastBumpUs) / 1e6 >= o.refractory_s) {
+        active = { t_us: t_us, peak_env: env }; armed = false; lastBumpUs = t_us;
+      }
+      return { hp: Math.sqrt(mag2), env: env, bump: bump, in_bump: !!active };
+    }
+    function finish() {          // close a bump still open at Stop
+      if (active) { bumps.push(active); active = null; }
+      return bumps.slice();
+    }
+    function setThreshold(v) { o.threshold_mps2 = v; }
+    return { push: push, finish: finish, setThreshold: setThreshold, settings: o };
+  }
+
+  function buildDemoMeta(settings, bumps) {
+    return [
+      'demo_note=live DSP concept demo at phone rate; not the VibraSmash pipeline settings',
+      'demo_hp_cutoff_hz=' + settings.hp_cutoff_hz,
+      'demo_rms_window_s=' + settings.rms_window_s,
+      'demo_threshold_mps2=' + settings.threshold_mps2,
+      'demo_rearm_ratio=' + settings.rearm_ratio,
+      'demo_refractory_s=' + settings.refractory_s,
+      'demo_warmup_s=' + settings.warmup_s,
+      'demo_n_bumps=' + bumps.length,
+      'demo_bump_t_s=' + bumps.map(function (b) { return (b.t_us / 1e6).toFixed(3); }).join(' '),
+      'demo_bump_peak_env_mps2=' + bumps.map(function (b) { return b.peak_env.toFixed(3); }).join(' ')
+    ].join('\n') + '\n';
+  }
+
+  return { pickAccel: pickAccel, eventTimeMs: eventTimeMs, toUs: toUs, stats: stats,
+           buildCsv: buildCsv, buildMeta: buildMeta, sanitizeSession: sanitizeSession,
+           DSP_DEFAULTS: DSP_DEFAULTS, createProcessor: createProcessor, buildDemoMeta: buildDemoMeta };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+// ===== END CORE =====
+
+(function () {
+  if (typeof document === 'undefined') return;
+  var $ = function (id) { return document.getElementById(id); };
+  var btn = $('toggle'), statusEl = $('status');
+  var recording = false, samples = [], startMs = 0, startIso = '', sources = {}, noData = 0;
+  var sessionId = '', wakeLock = null, timer = null, deviceModel = '';
+  var wasHidden = false;
+  var proc = null, plotPts = [], plotBumps = [], nBumps = 0, lastEnv = NaN, lastPeak = NaN, raf = 0;
+  var PLOT_S = 5;
+  var thr = $('thr');
+  var savedThr = parseFloat(localStorage.getItem('vs_threshold'));
+  thr.value = isFinite(savedThr) ? savedThr : Core.DSP_DEFAULTS.threshold_mps2;
+  $('thrVal').textContent = Number(thr.value).toFixed(1);
+  $('hpHz').textContent = Core.DSP_DEFAULTS.hp_cutoff_hz;
+  $('rmsMs').textContent = Math.round(Core.DSP_DEFAULTS.rms_window_s * 1000);
+  $('refMs').textContent = Math.round(Core.DSP_DEFAULTS.refractory_s * 1000);
+  thr.addEventListener('input', function () {
+    $('thrVal').textContent = Number(thr.value).toFixed(1);
+    localStorage.setItem('vs_threshold', thr.value);
+    draw();
+  });
+
+  function draw() {
+    var cv = $('plot'), dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    var g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    var threshold = Number(thr.value);
+    var tEnd = plotPts.length ? plotPts[plotPts.length - 1].t_us : 0;
+    var tStart = tEnd - PLOT_S * 1e6;
+    var ymax = threshold * 1.5;
+    for (var i = 0; i < plotPts.length; i++) ymax = Math.max(ymax, plotPts[i].hp);
+    ymax *= 1.1;
+    var pad = 22;
+    var X = function (t) { return (t - tStart) / (PLOT_S * 1e6) * w; };
+    var Y = function (v) { return h - pad - v / ymax * (h - 2 * pad); };
+    var css = getComputedStyle(document.body).color;
+    g.fillStyle = css; g.globalAlpha = 0.6; g.font = '11px system-ui, sans-serif';
+    g.fillText(ymax.toFixed(1) + ' m/s²', 4, 12);
+    g.fillText('last ' + PLOT_S + ' s', w - 52, h - 6);
+    g.globalAlpha = 1;
+    // bumps
+    g.fillStyle = 'rgba(198,40,40,0.18)'; g.strokeStyle = '#c62828'; g.lineWidth = 2;
+    for (var b = 0; b < plotBumps.length; b++) {
+      var bx = X(plotBumps[b].t_us);
+      if (bx < 0) continue;
+      g.fillRect(bx - 1, pad / 2, 3, h - pad * 1.5);
+    }
+    function line(key, color, width) {
+      g.strokeStyle = color; g.lineWidth = width; g.beginPath();
+      for (var j = 0; j < plotPts.length; j++) {
+        var p = plotPts[j], x = X(p.t_us), y = Y(p[key]);
+        if (j === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    if (plotPts.length > 1) { line('hp', '#8a94a6', 1); line('env', '#1f6feb', 2.5); }
+    g.setLineDash([6, 4]); g.strokeStyle = '#e08a00'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, Y(threshold)); g.lineTo(w, Y(threshold)); g.stroke();
+    g.setLineDash([]);
+  }
+
+  function loop() {
+    draw();
+    if (recording) raf = requestAnimationFrame(loop);
+  }
+
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.className = isError ? 'error' : '';
+  }
+
+  var bridge = window.VibraSmashAndroid || null;   // present only inside the Android app
+  var shareBtn = $('share'), lastFiles = null, lastMessage = '';
+
+  function webFiles() {
+    if (!lastFiles || typeof File === 'undefined') return null;
+    return lastFiles.map(function (f) { return new File([f.text], f.name, { type: f.type }); });
+  }
+  function canShare() {
+    if (!lastFiles) return false;
+    if (bridge) return true;
+    var files = webFiles();
+    return !!(files && navigator.canShare && navigator.canShare({ files: files }));
+  }
+  shareBtn.addEventListener('click', function () {
+    if (!lastFiles) return;
+    if (bridge) {
+      var r = bridge.shareFiles(lastFiles.map(function (f) { return f.name; }).join('|'), lastMessage);
+      if (r !== 'OK') setStatus('Share failed: ' + r, true);
+      return;
+    }
+    navigator.share({ files: webFiles(), title: 'VibraSmash phone recording', text: lastMessage })
+      .catch(function (e) { if (e.name !== 'AbortError') setStatus('Share failed: ' + e.message, true); });
+  });
+
+  function getDeviceModel() {
+    if (bridge) {
+      try { return Promise.resolve(bridge.deviceModel()); } catch (e) { /* fall through */ }
+    }
+    var uad = navigator.userAgentData;
+    if (uad && uad.getHighEntropyValues) {
+      return uad.getHighEntropyValues(['model', 'platform', 'platformVersion'])
+        .then(function (v) {
+          var parts = [v.model, v.platform, v.platformVersion].filter(Boolean);
+          return parts.length ? parts.join(' ') : navigator.userAgent;
+        })
+        .catch(function () { return navigator.userAgent; });
+    }
+    return Promise.resolve(navigator.userAgent);
+  }
+
+  function onMotion(ev) {
+    if (!recording) return;
+    var nowMs = performance.now();
+    var tMs = Core.eventTimeMs(ev, nowMs);
+    if (tMs < startMs) return;               // stamped before Start: not part of this recording
+    var a = Core.pickAccel(ev);
+    if (!a) { noData++; return; }
+    sources[a.source] = (sources[a.source] || 0) + 1;
+    var t_us = Core.toUs(tMs, startMs);
+    samples.push({ t_us: t_us, ax: a.x, ay: a.y, az: a.z });
+    var r = proc.push(t_us, a.x, a.y, a.z);
+    lastEnv = r.env;
+    plotPts.push({ t_us: t_us, hp: r.hp, env: r.env });
+    var cut = t_us - PLOT_S * 1e6;
+    while (plotPts.length && plotPts[0].t_us < cut) plotPts.shift();
+    if (r.bump) { nBumps++; lastPeak = r.bump.peak_env; }
+    if (r.in_bump && (!plotBumps.length || plotBumps[plotBumps.length - 1].open !== true)) {
+      plotBumps.push({ t_us: t_us, open: true });
+    }
+    if (!r.in_bump && plotBumps.length) plotBumps[plotBumps.length - 1].open = false;
+    while (plotBumps.length && plotBumps[0].t_us < cut) plotBumps.shift();
+  }
+
+  function refresh() {
+    var n = samples.length;
+    $('count').textContent = n;
+    $('elapsed').textContent = ((performance.now() - startMs) / 1000).toFixed(1) + ' s';
+    var span = n > 1 ? (samples[n - 1].t_us - samples[0].t_us) / 1e6 : 0;
+    $('rate').textContent = span > 0 ? ((n - 1) / span).toFixed(1) : '–';
+    $('bumps').textContent = nBumps;
+    $('envNow').textContent = isFinite(lastEnv) ? lastEnv.toFixed(2) : '–';
+    $('lastPeak').textContent = isFinite(lastPeak) ? lastPeak.toFixed(2) : '–';
+    if (wasHidden) {
+      setStatus('Page was hidden during recording; expect a gap (see max_gap_ms).', true);
+    } else if (n === 0 && performance.now() - startMs > 2000) {
+      setStatus(noData > 0
+        ? 'Motion events arrive but carry no acceleration. This device may have no accelerometer.'
+        : 'No motion events yet. Check that this page is open on localhost or HTTPS and that motion sensors are allowed in site settings.', true);
+    } else if (n > 0) {
+      setStatus('Recording…');
+    }
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+
+  async function start() {
+    if (!window.isSecureContext) {
+      setStatus('This page is not a secure context. Open it at http://localhost:8080 or over HTTPS.', true);
+      return;
+    }
+    if (typeof DeviceMotionEvent === 'undefined') {
+      setStatus('This browser has no DeviceMotionEvent.', true);
+      return;
+    }
+    // iOS 13+: permission must be requested inside the tap handler.
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      try {
+        var res = await DeviceMotionEvent.requestPermission();
+        if (res !== 'granted') { setStatus('Motion permission was denied.', true); return; }
+      } catch (e) {
+        setStatus('Motion permission request failed: ' + e.message, true);
+        return;
+      }
+    }
+    sessionId = Core.sanitizeSession($('session').value);
+    $('session').value = sessionId;
+    samples = []; sources = {}; noData = 0; wasHidden = false;
+    lastFiles = null; shareBtn.disabled = true;
+    if (bridge) { try { bridge.clearShare(); } catch (e) { /* nothing to clear */ } }
+    proc = Core.createProcessor({ threshold_mps2: Number(thr.value) });
+    plotPts = []; plotBumps = []; nBumps = 0; lastEnv = NaN; lastPeak = NaN;
+    thr.disabled = true;   // one threshold per recording, so meta.txt states it exactly
+    startMs = performance.now();
+    startIso = new Date().toISOString();
+    recording = true;
+    window.addEventListener('devicemotion', onMotion);
+    btn.textContent = 'Stop'; btn.classList.add('recording');
+    $('session').disabled = true;
+    setStatus('Waiting for motion events…');
+    timer = setInterval(refresh, 250);
+    raf = requestAnimationFrame(loop);
+    try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
+  }
+
+  function stop() {
+    recording = false;
+    window.removeEventListener('devicemotion', onMotion);
+    clearInterval(timer);
+    cancelAnimationFrame(raf);
+    thr.disabled = false;
+    var allBumps = proc ? proc.finish() : [];
+    nBumps = allBumps.length;
+    if (allBumps.length) lastPeak = allBumps[allBumps.length - 1].peak_env;
+    refresh();
+    draw();
+    if (wakeLock) { wakeLock.release().catch(function () {}); wakeLock = null; }
+    btn.textContent = 'Start'; btn.classList.remove('recording');
+    $('session').disabled = false;
+    if (samples.length === 0) {
+      setStatus('No samples were recorded, so no files were saved.', true);
+      return;
+    }
+    var meta = Core.buildMeta(samples, {
+      session_id: sessionId, device_model: deviceModel, user_agent: navigator.userAgent,
+      start_time_iso: startIso, accel_sources: sources, n_events_without_data: noData
+    }) + Core.buildDemoMeta(proc.settings, allBumps);
+    var gapNote = wasHidden ? ' The page was hidden during recording, so the data has a gap.' : '';
+    lastFiles = [
+      { name: sessionId + '_accel.csv', text: Core.buildCsv(samples), type: 'text/csv' },
+      { name: sessionId + '_meta.txt', text: meta, type: 'text/plain' }
+    ];
+    lastMessage = 'VibraSmash phone accelerometer recording "' + sessionId + '" (' + samples.length +
+      ' samples). Phone data, not ESP32 piezo/IMU data.';
+    shareBtn.disabled = !canShare();
+    if (bridge) {
+      var r1 = bridge.saveText(lastFiles[0].name, lastFiles[0].text);
+      var r2 = bridge.saveText(lastFiles[1].name, lastFiles[1].text);
+      if (r1.indexOf('ERROR') === 0 || r2.indexOf('ERROR') === 0) {
+        setStatus('Saving failed: ' + r1 + ' / ' + r2, true);
+      } else {
+        setStatus('Saved ' + samples.length + ' samples: ' + r1 + ' and ' + r2 + '.' + gapNote);
+      }
+      return;
+    }
+    download(lastFiles[0].name, lastFiles[0].text);
+    // Chrome may ask once to allow this site to download multiple files.
+    setTimeout(function () { download(lastFiles[1].name, lastFiles[1].text); }, 400);
+    setStatus('Saved ' + sessionId + '_accel.csv and ' + sessionId + '_meta.txt (' +
+      samples.length + ' samples) to Downloads.' + gapNote);
+  }
+
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    Promise.resolve(recording ? stop() : start()).finally(function () { btn.disabled = false; });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (recording && document.visibilityState === 'hidden') wasHidden = true;
+  });
+
+  getDeviceModel().then(function (m) { deviceModel = m; });
+  draw();
+  window.addEventListener('resize', draw);
+  if (!window.isSecureContext) {
+    setStatus('Not a secure context: motion sensors are blocked. Use http://localhost:8080 or HTTPS.', true);
+  }
+  if (!bridge && 'serviceWorker' in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
